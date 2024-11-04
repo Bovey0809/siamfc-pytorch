@@ -44,9 +44,9 @@ class TrackerSiamFC(Tracker):
         super(TrackerSiamFC, self).__init__('SiamFC', True)
         self.cfg = self.parse_args(**kwargs)
 
-        # setup GPU device if available
+        # 使用传入的local_rank作为设备
         self.cuda = torch.cuda.is_available()
-        self.device = torch.device('cuda:0' if self.cuda else 'cpu')
+        self.device = None  # 稍后在train函数中设置
 
         # setup model
         self.net = Net(
@@ -234,6 +234,10 @@ class TrackerSiamFC(Tracker):
         return boxes, times
     
     def train_step(self, batch, backward=True):
+        """
+        z: 模板图像的特征映射，通常是一个较小的图像块，用于表示目标物体的外观。
+        x: 搜索图像的特征映射，通常是一个较大的图像��，用于在其中搜索目标物体。
+        """
         # set network mode
         self.net.train(backward)
 
@@ -258,16 +262,20 @@ class TrackerSiamFC(Tracker):
         return loss.item()
 
     @torch.enable_grad()
-    def train_over(self, seqs, val_seqs=None,
-                   save_dir='pretrained'):
-        # set to train mode
+    def train(self, seqs, val_seqs=None, save_dir='pretrained', local_rank=0):
+        # 设置设备
+        self.device = torch.device(f'cuda:{local_rank}')
+        self.net = self.net.to(self.device)
+        self.criterion = self.criterion.to(self.device)
+
+        # 设置为训练模式
         self.net.train()
 
-        # create save_dir folder
+        # 创建保存目录
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        # setup dataset
+        # 设置数据集
         transforms = SiamFCTransforms(
             exemplar_sz=self.cfg.exemplar_sz,
             instance_sz=self.cfg.instance_sz,
