@@ -3,6 +3,7 @@ from __future__ import absolute_import, division
 import torch.nn as nn
 import cv2
 import numpy as np
+import os
 
 
 def init_weights(model, gain=1):
@@ -82,9 +83,11 @@ def show_image(img, boxes=None, box_fmt='ltwh', colors=None,
             img = cv2.rectangle(img, pt1, pt2, color.tolist(), thickness)
     
     if visualize:
-        winname = 'window_{}'.format(fig_n)
-        cv2.imshow(winname, img)
-        cv2.waitKey(delay)
+        # Create visualization directory if it doesn't exist
+        os.makedirs('visualization', exist_ok=True)
+        # Save the image with frame number
+        cv2.imwrite(f'visualization/frame_{fig_n:04d}.jpg', img)
+        print(f'Saved visualization to visualization/frame_{fig_n:04d}.jpg')
 
     return img
 

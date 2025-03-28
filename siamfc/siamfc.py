@@ -44,9 +44,9 @@ class TrackerSiamFC(Tracker):
         super(TrackerSiamFC, self).__init__('SiamFC', True)
         self.cfg = self.parse_args(**kwargs)
 
-        # 使用传入的local_rank作为设备
+        # setup GPU device if available
         self.cuda = torch.cuda.is_available()
-        self.device = None  # 稍后在train函数中设置
+        self.device = torch.device('cuda:0' if self.cuda else 'cpu')
 
         # setup model
         self.net = Net(
@@ -56,8 +56,14 @@ class TrackerSiamFC(Tracker):
         
         # load checkpoint if provided
         if net_path is not None:
-            self.net.load_state_dict(torch.load(
-                net_path, map_location=lambda storage, loc: storage))
+            state_dict = torch.load(
+                net_path, map_location=lambda storage, loc: storage)
+            # Remove 'module.' prefix from state dict keys
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                name = k.replace('module.', '')  # remove 'module.' prefix
+                new_state_dict[name] = v
+            self.net.load_state_dict(new_state_dict, strict=False)
         self.net = self.net.to(self.device)
 
         # setup criterion
@@ -229,14 +235,14 @@ class TrackerSiamFC(Tracker):
             times[f] = time.time() - begin
 
             if visualize:
-                ops.show_image(img, boxes[f, :])
+                ops.show_image(img, boxes[f, :], fig_n=f+1)
 
         return boxes, times
     
     def train_step(self, batch, backward=True):
         """
         z: 模板图像的特征映射，通常是一个较小的图像块，用于表示目标物体的外观。
-        x: 搜索图像的特征映射，通常是一个较大的图像��，用于在其中搜索目标物体。
+        x: 搜索图像的特征映射，通常是一个较大的图像，用于在其中搜索目标物体。
         """
         # set network mode
         self.net.train(backward)
