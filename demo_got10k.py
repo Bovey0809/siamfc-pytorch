@@ -18,7 +18,7 @@ def load_groundtruth(gt_file):
 
 if __name__ == '__main__':
     # Load the longer sequence
-    seq_dir = os.path.expanduser('~/data/got10k/test/GOT-10k_Test_000180')
+    seq_dir = os.path.expanduser('~/data/test/GOT-10k_Test_000180')
     img_files = sorted(glob.glob(os.path.join(seq_dir, '*.jpg')))
     anno = load_groundtruth(os.path.join(seq_dir, 'groundtruth.txt'))
     

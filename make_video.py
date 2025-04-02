@@ -1,6 +1,6 @@
-import cv2
 import os
 import glob
+import subprocess
 
 def frames_to_video(frame_dir, output_path, fps=30):
     # Get all frames
@@ -9,33 +9,26 @@ def frames_to_video(frame_dir, output_path, fps=30):
         print("No frames found in the directory!")
         return
     
-    # Read the first frame to get dimensions
-    first_frame = cv2.imread(frames[0])
-    height, width = first_frame.shape[:2]
+    # Use ffmpeg to create video with MPEG4 codec
+    cmd = [
+        'ffmpeg',
+        '-y',  # Overwrite output file if it exists
+        '-framerate', str(fps),
+        '-pattern_type', 'glob',
+        '-i', os.path.join(frame_dir, 'frame_*.jpg'),
+        '-c:v', 'mpeg4',  # Use MPEG4 codec
+        '-q:v', '1',      # Highest quality
+        output_path
+    ]
     
-    # Initialize video writer with H.264 codec
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 codec
-    out = cv2.VideoWriter(
-        output_path, 
-        fourcc, 
-        fps, 
-        (width, height),
-        isColor=True
-    )
-    
-    if not out.isOpened():
-        print("Failed to initialize video writer!")
-        return
-    
-    # Write frames to video
-    for frame_path in frames:
-        frame = cv2.imread(frame_path)
-        out.write(frame)
-        print(f"Processing {os.path.basename(frame_path)}")
-    
-    # Release video writer
-    out.release()
-    print(f"\nVideo saved to {output_path}")
+    print("Creating video...")
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print(f"\nVideo saved to {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error creating video: {e}")
+        if e.stderr:
+            print(f"Error details: {e.stderr}")
 
 if __name__ == '__main__':
-    frames_to_video('visualization', 'tracking_result.h264', fps=30) 
+    frames_to_video('visualization', 'tracking_result.mp4', fps=30) 
